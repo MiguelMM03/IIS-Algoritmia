@@ -1,0 +1,170 @@
+package alg.p7;
+
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ViajanteRyP {
+	private int[][] matrizPesos;
+	private int numNodos;
+	private int[] solucion;
+	private double costeSolucion=Double.POSITIVE_INFINITY;
+	private String archivo;
+	
+	public ViajanteRyP(String archivo) {
+		obtenerNumeroDeNodos(archivo);
+		leerArchivo(archivo);
+		this.archivo=archivo;
+		
+	}
+	
+	public void showMatrizPesos() {
+		for(int i=0;i<numNodos;i++) {
+			for(int j=0;j<numNodos;j++) {
+				System.out.print(matrizPesos[i][j]+" ");
+			}
+			System.out.println();
+		}
+	}
+	public ViajanteRyP(int[][] matriz) {
+		if(matriz.length==0 || matriz.length!=matriz[0].length) {
+			throw new IllegalArgumentException("La matriz dada no puede tener longitud 0 y tiene que ser cuadrada");
+		}
+		matrizPesos=matriz;
+		numNodos=matriz.length;
+		solucion=new int[numNodos+1];
+	}
+	private void obtenerNumeroDeNodos(String archivo) {
+		numNodos=Integer.parseInt(archivo.substring(archivo.length()-6,archivo.length()-4));
+		matrizPesos=new int[numNodos][numNodos];
+		solucion=new int[numNodos+1];
+		
+	}
+	public  void leerArchivo(String archivo){
+		String cadena; 
+		try{
+			BufferedReader b = new BufferedReader(new FileReader(archivo)); 
+			int i=0;
+			while((cadena = b.readLine())!=null) { 
+				String[] splits=cadena.split(" ");
+				for(int j=0;j<splits.length;j++) {
+					matrizPesos[i][j]=Integer.parseInt(splits[j]);
+				}
+				i++;
+			} 
+			b.close();
+		}catch(FileNotFoundException e){
+
+		}catch(IOException e){
+
+		}
+	}
+	public void resolver() {
+		List<Integer> sol=new ArrayList<Integer>();
+		List<Integer> visitados=new ArrayList<Integer>();
+		calcularSolucion(0,visitados,sol, 0);
+		
+	}
+
+
+	private void calcularSolucion(int nivel,List<Integer> visitados, List<Integer> sol, int coste) {
+		if(nivel==numNodos) {
+			sol.add(sol.get(0));
+			coste+=matrizPesos[sol.get(sol.size()-2)][sol.get(0)];
+			if(coste<costeSolucion) {
+				costeSolucion=coste;
+				for(int i=0;i<sol.size();i++) {
+					solucion[i]=sol.get(i);
+				}
+			}
+			for(int i=0;i<sol.size();i++) {
+				solucion[i]=sol.get(i);
+			}
+			sol.remove(sol.size()-1);
+			coste-=matrizPesos[sol.get(sol.size()-1)][sol.get(0)];
+		}
+		else if(nivel<numNodos) {
+			if(visitados.size()==0) {
+				visitados.add(0);
+				sol.add(0);
+				calcularSolucion(nivel+1,visitados,sol,coste);
+				visitados.remove(0);
+				sol.remove(0);
+				return;
+			}
+			else{
+				ArrayList<Node> nodos=new ArrayList<Node>();
+				for(int i=0;i<numNodos;i++) {
+					if(!visitados.contains(i))
+						nodos.add(new Node(i,matrizPesos[sol.get(sol.size()-1)][i]));
+				}
+				nodos.sort((o1, o2) -> o1.compareTo(o2));
+				//costeAux=variable que contiene la suma de costes minimos que quedan entre los nodos
+				//no utilizados. De esta forma se pueden desechar ramas que no nos llevan a una solucion
+				int costeAux=calcularCosteMinimoNodosRestantes(nodos);
+				for(Node node:nodos){
+					visitados.add(node.getIndice());
+					sol.add(node.getIndice());
+					coste+=node.coste;
+					if(coste<costeSolucion-costeAux) {
+						calcularSolucion(nivel+1,visitados,sol,coste);
+						visitados.remove(Integer.valueOf(node.getIndice()));
+						sol.remove(Integer.valueOf(node.getIndice()));
+						coste-=node.coste;
+					}else {//Elimina ramas que no puedan ser solucion
+						visitados.remove(Integer.valueOf(node.getIndice()));
+						sol.remove(Integer.valueOf(node.getIndice()));
+						coste-=node.coste;
+						return;
+					}
+				}
+			}
+		}
+	}
+	/*
+	 * Calcula el coste minimo de cada nodo a cada uno de los restantes, incluyendo 
+	 * el de vuelta al origen.
+	 * Se le pasa como parámetro otro nodo, que es otro más que se debe descartar porque
+	 * la llamada a este método se realiza dentro de un bucle que recorre ya los propios nodos
+	 */
+	private int calcularCosteMinimoNodosRestantes(ArrayList<Node> nodos) {
+		int coste=0;
+		double[] matrixAux=new double[numNodos];
+		for (Node nodeOrigen : nodos) {
+			matrixAux[nodeOrigen.indice]=matrizPesos[nodeOrigen.indice][0];
+		}
+		for (Node nodeOrigen : nodos) {
+			for(Node nodeDestino:nodos) {
+				if(nodeOrigen.indice!=nodeDestino.indice 
+						&& matrizPesos[nodeOrigen.indice][nodeDestino.indice]<matrixAux[nodeOrigen.indice]) {
+					matrixAux[nodeOrigen.indice]=matrizPesos[nodeOrigen.indice][nodeDestino.indice];
+				}
+			}
+			
+		}
+		for(int i=0;i<matrixAux.length;i++) {
+			coste+=matrixAux[i];
+		}
+		return coste;
+	}
+
+	public void showResult() {
+		System.out.println("---------SOLUCION-----------");
+		System.out.println("Archivo: "+archivo);
+		System.out.println("Numero de nodos: "+numNodos);
+		for(int i=0;i<solucion.length;i++) {
+			System.out.print(solucion[i]+" ");
+		}
+		System.out.println("\tCoste: "+costeSolucion);
+		System.out.println("----------------------------");
+	}
+	public static void main(String[] args) {
+		ViajanteRyP v=new ViajanteRyP("files/grafo10.txt");
+		v.showMatrizPesos();
+		v.resolver();
+		v.showResult();
+	}
+}
